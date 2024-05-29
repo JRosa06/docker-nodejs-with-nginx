@@ -1,0 +1,48 @@
+version: "3"
+name: "nodejs-with-nginx"
+services:
+  app-node:
+    build:
+      context: ./node
+    networks:
+      - app-network
+    volumes:
+      - ./node:/usr/src/app
+    container_name: app-node
+    entrypoint: wait-for db-mysql:3306 -t 40 -- sh -c "npm install && npm start"
+    tty: true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db-mysql
+
+  db-mysql:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db-mysql
+    restart: always
+    tty: true
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    networks:
+      - app-network
+    ports:
+      - 8080:80
+    restart: always
+    tty: true
+    depends_on:
+      - app-node
+
+networks:
+  app-network:
+    driver: bridge
